@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+  <head>
+
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Proyecto Final</title>
+    <link rel="stylesheet" href="misestilos.css" type="text/css">
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/7.9.3/firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/7.9.3/firebase-auth.js"></script>
+    <script defer src="/__/firebase/7.9.3/firebase-database.js"></script>
+    <script defer src="/__/firebase/7.9.3/firebase-messaging.js"></script>
+    <script defer src="/__/firebase/7.9.3/firebase-storage.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="/__/firebase/init.js"></script>
+
+ </head>
+  <body>
+
+    <header id="cabeceralogo">
+      <div>
+        
+        <img src="Imagenes/gears.jpg">
+        <center>
+          <h1>Proyecto Final</h1>
+        </center>
+        </div>
+
+        <div class="red">
+          <div id="facebook"><a href="https://www.facebook.com/Jugueteria-Toys-Villal-104510520997655/" target="none" class="fa fa-facebook"></a></div>
+          <div id="youtube"><a href="https://www.youtube.com/channel/UC76hObg1078Auy9ifawdJkw?disable_polymer=true" class="fa fa-youtube-play"></a></div>
+          <div id="twitter"><a href="https://mobile.twitter.com/ToysVillal" class="fa fa-twitter"></a></div>
+      </div>
+
+     </header>
+      <center>
+     <nav id="menuprincipal">
+      <div>
+      <ul>
+      <li><a href="index.html">Principal</a></li>
+      <li><a href="chat.html">Chat</a></li>
+      <li><a href="Autentificacion.html">Autentificacion</a></li>
+      <li><a href="bddeArchivos.html">Base de Datos Y Archivos</a></li>
+      <li><a href="Mashup.html">Mashup</a></li>
+      </ul>
+      </div>
+      </nav>
+    </center>
+      <main>
+        <center>
+      <div>
+      <section id="articulosprincipales">
+      
+      <article>
+        <h1>Chat</h1>
+        <form action="javascript:agrega();">
+          <input id="texto" type="text" required placeholder="Mensaje">
+          <button>Enviar</button>
+        </form>
+        <ul id="mensajes">
+          <li><progress max="100">Cargando…</progress></li>
+        </ul>
+        
+        <script>
+          // @ts-check
+          /** Nombre de usuario atenticado por Firebase. */
+          let usuario = "";
+          /** Conexión al sistema de autenticación de Firebase. */
+          // @ts-ignore
+          const auth = firebase.auth();
+          /** Tipo de autenticación de usuarios. En este caso es con Google. */
+          // @ts-ignore
+          const provider = new firebase.auth.GoogleAuthProvider();
+          /* Configura el proveedor de Google para que permita seleccionar de una
+           * lista. */
+          provider.setCustomParameters({ prompt: "select_account" });
+          /* Recibe una función que se invoca cada que hay un cambio en la
+           * autenticación y recibe el modelo con las características del usuario.*/
+          auth.onAuthStateChanged(
+            /** Recibe las características del usuario o null si no ha iniciado
+             * sesión. */
+            usuarioAuth => {
+              if (usuarioAuth && usuarioAuth.email) {
+                // Usuario aceptado.
+                usuario = usuarioAuth.email;
+                // Muestra los mensajes del chat.
+                muestraMensajes();
+              } else {
+                // No ha iniciado sesión. Pide datos para iniciar sesión.
+                auth.signInWithRedirect(provider);
+              }
+            },
+            // Función que se invoca si hay un error al verificar el usuario.
+            procesaError
+          );
+          /** Conexión a la base de datos. */
+          // @ts-ignore
+          const firestore = firebase.firestore();
+          /** Agrega un usuario a la base de datos. */
+          function agrega() {
+            /* "MENSAJE" es el nombre de la colección a la que se agregan los datos.
+             * "USUARIO", "TEXTO" y "TIMESTAMP" son los nombres de los campos en el
+             * documento.
+             * El timestamp contiene la fecha y hora en que se agrega el registro.*/
+            firestore.collection("MENSAJE").add({
+              USUARIO: usuario,
+              // @ts-ignore
+              TEXTO: texto.value.trim(),
+              // @ts-ignore
+              TIMESTAMP: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+          /** Muestra los mensaje almacenados en la collection "MENSAJE". Se
+           * actualiza automáticamente. */
+          function muestraMensajes() {
+            /* Consulta que se actualiza automáticamente. Pide todos los registros
+             * de la colección "MENSAJE" ordenador por el campo "TIMESTAMP" de forma
+             * descendente. */
+            firestore.collection("MENSAJE").orderBy("TIMESTAMP", "desc")
+              .onSnapshot(
+                /** Función que muestra los datos enviados por el servidor. Si los
+                 * datos cambian en el servidor, se vuelve a invocar esta función y
+                 * recibe los datos actualizados.
+                 * @param {Object} querySnapshot estructura parecida a un Array, que
+                 * contiene una copia de los datos en el servidor. */
+                querySnapshot => {
+                  // Vacía la lista con los mensajes.
+                  // @ts-ignore
+                  mensajes.innerHTML = "";
+                  if (querySnapshot.size > 0) {
+                    /* Cuando el número de registros devueltos por la consulta es
+                     * mayor que 0, Revisa un por uno los registros de la consulta y
+                     * los muestra. El iterador "doc" apunta a un registro de la
+                     * base de datos. */
+                    querySnapshot.forEach(doc => {
+                      // recupera los datos almacenados en el registro.
+                      const data = doc.data();
+                      /* Agrega un li con los datos del registro, que se codifican
+                       * para evitar inyección de código. */
+                      // @ts-ignore
+                      mensajes.innerHTML += /* html */
+                        `<li><b>${cod(data.USUARIO)}</b><br>${cod(data.TEXTO)}</li>`;
+                    });
+                  } else {
+                    /* Cuando el número de registros devueltos por la consulta es
+                     * mayor que 0, agrega un texto HTML. */
+                    // @ts-ignore
+                    mensajes.innerHTML += /* html */
+                      `<li>No hay menajes registrados.</li>`;
+                  }
+                },
+                /* Función que se invoca cuando hay un error. Muestra el error. Al
+                 * invocar esta función la conexión se cancela. Por lo mismo, se
+                 * vuelve a conectar. */
+                e => {
+                  procesaError(e);
+                  // Intenta conectarse otra vez.
+                  muestraMensajes();
+                }
+              );
+          }
+    
+          /** Procesa un error. Muestra el objeto en la consola y un cuadro de
+           * alerta con el mensaje.
+           * @param {Error} e descripción del error. */
+          function procesaError(e) {
+            console.log(e);
+            alert(e.message);
+          }
+    
+          /** Map que contiene el texto de escape de los caracteres especiales de
+           * HTML.
+           * @type {Readonly<Map<string, string>> } */
+          const codMap = Object.freeze(new Map([['&', '&amp;'], ['<', '&lt;'],
+          ['>', '&gt;'], ['"', '&quot;'], ["'", '&#039;']]));
+    
+          /** Codifica un texto para que escape los caracteres especiales y no se
+           * pueda interpretar como HTML. Esta técnica evita la inyección de código.
+           * @param {string} texto
+           * @returns {string} un texto que no puede interpretarse como HTML. */
+          function cod(texto) {
+            return (texto || "").replace(/[&<>"']/g, letra => codMap.get(letra));
+          }
+        </script>
+      
+      </article>
+
+      </section>
+      <aside id="infoadicional">
+      <h1>Redes Sociales</h1>
+      <p>Cita del artículo uno</p>
+      <p>Cita del artículo dos</p>
+      </aside>
+      <div class="recuperar"></div>
+      </div>
+    </center>
+      </main>
+      <footer id="pielogo">
+      <div>
+      <section class="seccionpie">
+      <h1>Acceso Rapido</h1>
+      <p><a href="index.html">Principal</a></p>
+      <p><a href="chat.html">Chat</a></p>
+      <p><a href="Autentificacion.html">Autentificacion</a></p>
+      </section>
+      <section class="seccionpie">
+      <h1>---Ayuda---</h1>
+      <p><a href="contacto.html">Contacto</a></p>
+      </section>
+      <section class="seccionpie">
+      <address>Nezahualcóyotl</address>
+      <small>&copy; Derechos Reservados 2020 Fernando Bautista Morales</small>
+      </section>
+      <div class="recuperar"></div>
+      </div>
+      </footer>
+      
+  </body>
+</html>
